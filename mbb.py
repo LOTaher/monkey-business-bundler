@@ -21,6 +21,8 @@
 import argparse
 import os
 import time
+import subprocess
+from dataclasses import dataclass
 
 MBB_TEXT = (
     f"\033[38;2;255;255;255mmonkey"
@@ -45,7 +47,6 @@ def main():
 
     parser.add_argument("-d", "--dirname", default="./", help="directory to build")
     parser.add_argument("-g", "--git", action="store_true", help="only bundle files tracked by git")
-    # parser.add_argument("-v", "--version", action="store_true", default="", help="the bundle version (defaults to git hash if feasible)")
     parser.add_argument("-v", "--verbose", action="store_true", help="add verbose logging to the bundle process")
 
     args = parser.parse_args()
@@ -55,14 +56,30 @@ def main():
     else:
         path = os.path.abspath(args.dirname)
 
-    if args.verbose:
-        verbose_print(f"Found path {path}")
-
     files = os.listdir(path)
 
-    if args.verbose:
-        if ".git" not in files and args.git:
-            verbose_print("git is not initialized within directory, using directory's name")
+    if ".git" in files and args.git:
+        tracked_files = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
+        files = tracked_files.stdout.split("\n")
+        files.pop()
+
+    if ".git" not in files and args.git:
+        if args.verbose:
+            verbose_print("git is not initialized within this directory")
+
+    ignore_path = f"{path}/.mbbignore"
+    content = []
+
+    try:
+        with open(ignore_path, "r") as file:
+            # remove falsy values from the .mbbignore file and list it
+            content = list(filter(None, file.read()[:-1].split("\n")))
+    except:
+        if args.verbose:
+            verbose_print("no .mbbignore file found")
+
+    print(files)
+    print(content)
 
     return
 
