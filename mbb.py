@@ -22,7 +22,7 @@ import argparse
 import os
 import time
 import subprocess
-from dataclasses import dataclass
+import tarfile
 
 MBB_TEXT = (
     f"\033[38;2;255;255;255mmonkey"
@@ -32,6 +32,7 @@ MBB_TEXT = (
     f"\033[38;2;255;255;255mbundler"
     f" >\033[0m"
 )
+
 
 def verbose_print(str):
     local_time = time.localtime()
@@ -56,8 +57,10 @@ def main():
     else:
         path = os.path.abspath(args.dirname)
 
+    bundle_title = f"{os.path.basename(os.getcwd())}"
+
     ignore_path = f"{path}/.mbbignore"
-    mbb_files = set()
+    ignore_files = set()
 
     try:
         with open(ignore_path, "r") as file:
@@ -66,33 +69,45 @@ def main():
                 if not line or line.startswith("#"):
                     continue
 
-                mbb_files.add(os.path.abspath(os.path.join(path, line)))
+                ignore_files.add(os.path.join(path, line))
     except:
         if args.verbose:
             verbose_print("no .mbbignore file found")
 
     dir_files = []
 
-    for root, dirs, files in os.walk(path):
-        # mutating the dirs list directly ([:]) to prevent os.walk from going within ignored directories
-        dirs[:] = [d for d in dirs if os.path.join(path, d) not in mbb_files]
+    if not os.path.exists(f"{path}/.git") and args.git:
+        if args.verbose:
+            verbose_print("git is not initialized within this directory. bundling all files")
 
-        for file in files:
-            file_path = os.path.join(root, file)
-            if file_path not in mbb_files:
-                dir_files.append(os.path.join(root, file))
-
-    if ".git" in dir_files and args.git:
+    if os.path.exists(f"{path}/.git") and args.git:
+        if args.verbose:
+            verbose_print(".git folder found. only bundling tracked files")
         tracked_files = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
         dir_files = tracked_files.stdout.split("\n")
         dir_files.pop()
 
-    if ".git" not in dir_files and args.git:
-        if args.verbose:
-            verbose_print("git is not initialized within this directory")
+        # brittle version of checking for .mbbignore when tracked by git anyways, not needed by me
+        dir_files = [os.path.join(path, f) for f in dir_files if os.path.join(path, f) not in ignore_files]
 
-    print(mbb_files)
-    print(dir_files)
+        bundle_title = f"{bundle_title}-{subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()}"
+    else:
+        for root, dirs, files in os.walk(path):
+            # mutating the dirs list directly ([:]) to prevent os.walk from going within ignored directories
+            dirs[:] = [d for d in dirs if os.path.join(path, d) not in ignore_files]
+
+            for file in files:
+                file_path = os.path.join(root, file)
+                if file_path not in ignore_files:
+                    dir_files.append(file_path)
+
+    print("MBB IGNORE", ignore_files)
+    print("FILES", dir_files)
+    print(bundle_title)
+
+    with tarfile.open(f"{bundle_title}.tar.gz", "w:gz") as tar:
+        for file in dir_files:
+            tar.add(file, arcname=os.path.relpath(file, path))
 
     return
 
