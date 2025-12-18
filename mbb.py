@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    mbb.py - Monkey-Business-Bundler, splatte.dev's build and release system
+    mbb.py - Monkey-Business-Bundler, splatte.dev's bundle and release system
     Copyright (C) 2025-2026 splatte.dev
 
     This program is free software: you can redistribute it and/or modify
@@ -43,11 +43,11 @@ def verbose_print(args, str):
 def main():
     parser = argparse.ArgumentParser(
         prog="monkey-business-bundler",
-        description="splatte.dev build and release system",
+        description="splatte.dev bundle and release system",
         epilog="Check out more software releases at https://splatte.dev"
     )
 
-    parser.add_argument("-d", "--dirname", default="./", help="directory to build")
+    parser.add_argument("-d", "--dirname", default="./", help="directory to bundle")
     parser.add_argument("-g", "--git", action="store_true", help="only bundle files tracked by git")
     parser.add_argument("-v", "--verbose", action="store_true", help="add verbose logging to the bundle process")
 
@@ -90,7 +90,7 @@ def main():
         # brittle version of checking for .mbbignore when tracked by git anyways, not needed by me
         dir_files = [os.path.join(path, f) for f in dir_files if os.path.join(path, f) not in ignore_files]
 
-        bundle_title = f"{bundle_title}-{subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()}"
+        bundle_title = f"{bundle_title}-{subprocess.run(['git', 'branch', '--show-current'], capture_output=True, text=True).stdout.strip()}-{subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()}"
         verbose_print(args, f"updating bundle title to {bundle_title}")
     else:
         for root, dirs, files in os.walk(path):
