@@ -56,30 +56,43 @@ def main():
     else:
         path = os.path.abspath(args.dirname)
 
-    files = os.listdir(path)
-
-    if ".git" in files and args.git:
-        tracked_files = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
-        files = tracked_files.stdout.split("\n")
-        files.pop()
-
-    if ".git" not in files and args.git:
-        if args.verbose:
-            verbose_print("git is not initialized within this directory")
-
     ignore_path = f"{path}/.mbbignore"
-    content = []
+    mbb_files = set()
 
     try:
         with open(ignore_path, "r") as file:
-            # remove falsy values from the .mbbignore file and list it
-            content = list(filter(None, file.read()[:-1].split("\n")))
+            for line in file:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+
+                mbb_files.add(os.path.abspath(os.path.join(path, line)))
     except:
         if args.verbose:
             verbose_print("no .mbbignore file found")
 
-    print(files)
-    print(content)
+    dir_files = []
+
+    for root, dirs, files in os.walk(path):
+        # mutating the dirs list directly ([:]) to prevent os.walk from going within ignored directories
+        dirs[:] = [d for d in dirs if os.path.join(path, d) not in mbb_files]
+
+        for file in files:
+            file_path = os.path.join(root, file)
+            if file_path not in mbb_files:
+                dir_files.append(os.path.join(root, file))
+
+    if ".git" in dir_files and args.git:
+        tracked_files = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
+        dir_files = tracked_files.stdout.split("\n")
+        dir_files.pop()
+
+    if ".git" not in dir_files and args.git:
+        if args.verbose:
+            verbose_print("git is not initialized within this directory")
+
+    print(mbb_files)
+    print(dir_files)
 
     return
 
