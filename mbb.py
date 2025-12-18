@@ -33,8 +33,9 @@ MBB_TEXT = (
     f" >\033[0m"
 )
 
-
-def verbose_print(str):
+def verbose_print(args, str):
+    if not args.verbose:
+        return
     local_time = time.localtime()
     formatted_time = time.strftime("%H:%M:%S", local_time)
     print(f"{MBB_TEXT} {str} ({formatted_time})")
@@ -58,6 +59,7 @@ def main():
         path = os.path.abspath(args.dirname)
 
     bundle_title = f"{os.path.basename(os.getcwd())}"
+    verbose_print(args, f"bundle title set to {bundle_title}")
 
     ignore_path = f"{path}/.mbbignore"
     ignore_files = set()
@@ -71,18 +73,16 @@ def main():
 
                 ignore_files.add(os.path.join(path, line))
     except:
-        if args.verbose:
-            verbose_print("no .mbbignore file found")
+        verbose_print(args, "no .mbbignore file found")
 
     dir_files = []
 
     if not os.path.exists(f"{path}/.git") and args.git:
-        if args.verbose:
-            verbose_print("git is not initialized within this directory. bundling all files")
+        verbose_print(args, "git is not initialized within this directory. bundling all files")
 
     if os.path.exists(f"{path}/.git") and args.git:
-        if args.verbose:
-            verbose_print(".git folder found. only bundling tracked files")
+        verbose_print(args, ".git folder found. only bundling tracked files")
+
         tracked_files = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
         dir_files = tracked_files.stdout.split("\n")
         dir_files.pop()
@@ -91,6 +91,7 @@ def main():
         dir_files = [os.path.join(path, f) for f in dir_files if os.path.join(path, f) not in ignore_files]
 
         bundle_title = f"{bundle_title}-{subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()}"
+        verbose_print(args, f"updating bundle title to {bundle_title}")
     else:
         for root, dirs, files in os.walk(path):
             # mutating the dirs list directly ([:]) to prevent os.walk from going within ignored directories
@@ -100,14 +101,15 @@ def main():
                 file_path = os.path.join(root, file)
                 if file_path not in ignore_files:
                     dir_files.append(file_path)
+                    verbose_print(args, f"added file: {file}")
 
-    print("MBB IGNORE", ignore_files)
-    print("FILES", dir_files)
-    print(bundle_title)
+    verbose_print(args, "tarballing files")
 
     with tarfile.open(f"{bundle_title}.tar.gz", "w:gz") as tar:
         for file in dir_files:
             tar.add(file, arcname=os.path.relpath(file, path))
+
+    verbose_print(args, f"file {bundle_title} saved in {path}")
 
     return
 
