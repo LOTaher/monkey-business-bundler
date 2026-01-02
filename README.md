@@ -3,7 +3,7 @@
 The monkey business bundler is a simple build and release CLI tool for the splatte.dev distributed
 system.
 
-**Usage**: `mbb`
+**Usage**: `./mbb`
 
 It supports the following flags:
 - `-d`, `--dirname`, `./` - the directory to bundle.
