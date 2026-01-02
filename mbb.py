@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    mbb - Monkey-Business-Bundler, splatte.dev's bundle and release system
+    mbb.py - Monkey-Business-Bundler, splatte.dev's bundle and release system
     Copyright (C) 2025-2026 splatte.dev
 
     This program is free software: you can redistribute it and/or modify
